@@ -1,0 +1,40 @@
+
+//@version=5
+strategy("Complex EMA Crossover Strategy", shorttitle="CECS", overlay=true)
+
+// User inputs for moving average lengths and risk management
+shortLength = input.int(9, title="Short EMA Length")
+longLength = input.int(21, title="Long EMA Length")
+riskPercent = input.float(1.5, title="Risk Management (Percentage Loss for Exit)")
+exitBars = input.int(20, title="Exit After Bars")
+
+// Calculating the EMAs
+shortEma = ta.ema(close, shortLength)
+longEma = ta.ema(close, longLength)
+
+// Entry conditions
+longEntry = ta.crossover(shortEma, longEma)
+shortEntry = ta.crossunder(shortEma, longEma)
+
+alertcondition(ta.crossover(shortEma, longEma), title='Price Crossover Alarm', message='BUY SIGNAL!')
+alertcondition(ta.crossunder(shortEma, longEma), title='Price Crossunder Alarm', message='SELL SIGNAL!')
+
+// Plotting the EMAs
+plot(shortEma, title="Short EMA", color=color.blue)
+plot(longEma, title="Long EMA", color=color.orange)
+
+// Strategy execution
+if (longEntry)
+    strategy.entry("Long", strategy.long, when=longEntry)
+if (shortEntry)
+    strategy.entry("Short", strategy.short, when=shortEntry)
+
+// Risk management - Stop loss and take profit levels
+longStopLoss = close * (1 - riskPercent / 100)
+shortStopLoss = close * (1 + riskPercent / 100)
+
+// Exit conditions based on stop loss or after a set number of bars
+strategy.exit("Exit Long", from_entry="Long", stop=longStopLoss, when=strategy.position_size > 0)
+strategy.exit("Exit Short", from_entry="Short", stop=shortStopLoss, when=strategy.position_size < 0)
+strategy.close("Long", when=ta.barssince(longEntry) >= exitBars and strategy.position_size > 0)
+strategy.close("Short", when=ta.barssince(shortEntry) >= exitBars and strategy.position_size < 0)
